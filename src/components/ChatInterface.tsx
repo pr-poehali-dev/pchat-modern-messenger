@@ -137,7 +137,7 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
 
   return (
     <div className="h-screen flex overflow-hidden">
-      <div className={`${showMobileChat ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-96 flex-shrink-0`}>
+      <div className={`${showMobileChat ? 'hidden md:flex' : 'flex'} w-full md:w-96 lg:w-[420px] flex-shrink-0`}>
         <ChatList
           chats={chats}
           onChatSelect={handleChatSelect}
@@ -164,7 +164,7 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
         onLogout={onLogout}
       />
       
-      <div className={`${showMobileChat ? 'flex' : 'hidden md:flex'} flex-1`}>
+      <div className={`${showMobileChat ? 'flex' : 'hidden md:flex'} flex-1 min-w-0`}>
         <ChatWindow
           chat={selectedChat}
           currentUser={user}

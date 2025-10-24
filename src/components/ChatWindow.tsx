@@ -154,7 +154,7 @@ export default function ChatWindow({ chat, currentUser, onBack, onChatUpdate }: 
 
   if (!chat) {
     return (
-      <div className="flex-1 flex items-center justify-center glass">
+      <div className="flex-1 flex items-center justify-center glass w-full">
         <div className="text-center">
           <Icon name="MessageCircle" size={64} className="mx-auto text-muted-foreground mb-4" />
           <p className="text-xl text-muted-foreground">Выберите чат</p>
@@ -164,7 +164,7 @@ export default function ChatWindow({ chat, currentUser, onBack, onChatUpdate }: 
   }
 
   return (
-    <div className="flex-1 flex flex-col h-screen glass">
+    <div className="flex-1 flex flex-col h-screen glass w-full">
       <div className="p-4 border-b border-primary/30 glass-strong flex items-center gap-3">
         <Button
           variant="ghost"

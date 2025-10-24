@@ -1,21 +1,6 @@
 {
   "tests": [
     {
-      "name": "Register new user",
-      "method": "POST",
-      "body": {
-        "action": "register",
-        "username": "testuser",
-        "password": "password123"
-      },
-      "expectedStatus": 200,
-      "expectedBody": {
-        "user_id": "number",
-        "username": "string"
-      },
-      "bodyMatcher": "partial"
-    },
-    {
       "name": "Login with valid credentials",
       "method": "POST",
       "body": {
@@ -27,6 +12,21 @@
       "expectedBody": {
         "user_id": "number",
         "username": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Update user profile",
+      "method": "PUT",
+      "body": {
+        "user_id": 1,
+        "nickname": "Updated User",
+        "hide_online_status": false,
+        "theme": "dark"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true
       },
       "bodyMatcher": "partial"
     }

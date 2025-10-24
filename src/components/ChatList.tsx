@@ -86,8 +86,8 @@ export default function ChatList({
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-2">
+      <ScrollArea className="flex-1 h-full">
+        <div className="p-2 min-h-full">
           {chats.length === 0 ? (
             <div className="text-center py-12 px-4">
               <Icon name="MessageCircle" size={48} className="mx-auto text-muted-foreground mb-4" />

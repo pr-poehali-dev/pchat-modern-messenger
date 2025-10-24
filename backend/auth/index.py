@@ -224,6 +224,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         body_data = json.loads(event.get('body', '{}'))
         user_id = body_data.get('user_id')
+        password = body_data.get('password', '')
         
         if not user_id:
             return {
@@ -233,12 +234,33 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'isBase64Encoded': False
             }
         
+        if not password:
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'password required for account deletion'}),
+                'isBase64Encoded': False
+            }
+        
         dsn = os.environ.get('DATABASE_URL')
         conn = psycopg2.connect(dsn)
         cur = conn.cursor()
         
         try:
-            cur.execute("UPDATE users SET username = %s WHERE id = %s", (f'deleted_{user_id}', user_id))
+            password_hash = hash_password(password)
+            
+            cur.execute("SELECT id FROM users WHERE id = %s AND password_hash = %s", (user_id, password_hash))
+            if not cur.fetchone():
+                return {
+                    'statusCode': 401,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Invalid password'}),
+                    'isBase64Encoded': False
+                }
+            
+            cur.execute("DELETE FROM chat_members WHERE user_id = %s", (user_id,))
+            cur.execute("DELETE FROM messages WHERE sender_id = %s", (user_id,))
+            cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
             conn.commit()
             
             return {

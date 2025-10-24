@@ -28,6 +28,8 @@ export default function SettingsDialog({ open, onClose, currentUser, onLogout }:
   const [theme, setTheme] = useState('system');
   const [email, setEmail] = useState('');
   const [showEmailSetup, setShowEmailSetup] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -104,15 +106,26 @@ export default function SettingsDialog({ open, onClose, currentUser, onLogout }:
   };
 
   const handleDeleteAccount = async () => {
-    const confirmed = confirm('Вы уверены, что хотите удалить аккаунт? Это действие необратимо.');
-    if (!confirmed) return;
+    if (!deletePassword) {
+      toast({
+        title: 'Ошибка',
+        description: 'Введите пароль для подтверждения',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
       const response = await fetch('https://functions.poehali.dev/2a9e541b-ebd0-4366-8b3d-be92ef4828fa', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: currentUser.user_id }),
+        body: JSON.stringify({ 
+          user_id: currentUser.user_id,
+          password: deletePassword
+        }),
       });
+
+      const data = await response.json();
 
       if (response.ok) {
         toast({
@@ -120,6 +133,12 @@ export default function SettingsDialog({ open, onClose, currentUser, onLogout }:
           description: 'Ваш аккаунт был успешно удален',
         });
         onLogout();
+      } else {
+        toast({
+          title: 'Ошибка',
+          description: data.error || 'Не удалось удалить аккаунт',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
       toast({
@@ -256,14 +275,52 @@ export default function SettingsDialog({ open, onClose, currentUser, onLogout }:
             </Button>
           </div>
 
-          <Button
-            onClick={handleDeleteAccount}
-            variant="destructive"
-            className="w-full"
-          >
-            <Icon name="Trash2" size={16} className="mr-2" />
-            Удалить аккаунт
-          </Button>
+          {!showDeleteConfirm ? (
+            <Button
+              onClick={() => setShowDeleteConfirm(true)}
+              variant="destructive"
+              className="w-full"
+            >
+              <Icon name="Trash2" size={16} className="mr-2" />
+              Удалить аккаунт
+            </Button>
+          ) : (
+            <div className="space-y-3 p-4 rounded-lg glass border-2 border-destructive/50">
+              <div className="flex items-center gap-2 text-destructive">
+                <Icon name="AlertTriangle" size={20} />
+                <p className="font-semibold">Удаление аккаунта</p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Это действие необратимо. Все ваши чаты и сообщения будут удалены.
+              </p>
+              <Input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Введите пароль для подтверждения"
+                className="glass border-destructive/50"
+              />
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeletePassword('');
+                  }}
+                  variant="outline"
+                  className="flex-1 glass"
+                >
+                  Отмена
+                </Button>
+                <Button
+                  onClick={handleDeleteAccount}
+                  variant="destructive"
+                  className="flex-1"
+                >
+                  Удалить навсегда
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

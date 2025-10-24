@@ -36,7 +36,56 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'body': ''
         }
     
-    if method == 'POST':
+    if method == 'GET':
+        import psycopg2
+        
+        params = event.get('queryStringParameters', {})
+        user_id = params.get('user_id')
+        
+        if not user_id:
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'user_id required'}),
+                'isBase64Encoded': False
+            }
+        
+        dsn = os.environ.get('DATABASE_URL')
+        conn = psycopg2.connect(dsn)
+        cur = conn.cursor()
+        
+        try:
+            cur.execute(
+                "SELECT nickname, avatar_url, hide_online_status, theme, email FROM users WHERE id = %s",
+                (user_id,)
+            )
+            user = cur.fetchone()
+            
+            if not user:
+                return {
+                    'statusCode': 404,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'User not found'}),
+                    'isBase64Encoded': False
+                }
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({
+                    'nickname': user[0],
+                    'avatar_url': user[1],
+                    'hide_online_status': user[2],
+                    'theme': user[3],
+                    'email': user[4]
+                }),
+                'isBase64Encoded': False
+            }
+        finally:
+            cur.close()
+            conn.close()
+    
+    elif method == 'POST':
         import psycopg2
         
         body_data = json.loads(event.get('body', '{}'))
@@ -48,7 +97,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return {
                 'statusCode': 400,
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({'error': 'Username and password required'})
+                'body': json.dumps({'error': 'Username and password required'}),
+                'isBase64Encoded': False
             }
         
         is_valid, error_msg = validate_password(password)
@@ -56,7 +106,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return {
                 'statusCode': 400,
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({'error': error_msg})
+                'body': json.dumps({'error': error_msg}),
+                'isBase64Encoded': False
             }
         
         dsn = os.environ.get('DATABASE_URL')
@@ -102,7 +153,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     return {
                         'statusCode': 401,
                         'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                        'body': json.dumps({'error': 'Invalid credentials'})
+                        'body': json.dumps({'error': 'Invalid credentials'}),
+                        'isBase64Encoded': False
                     }
                 
                 return {
@@ -119,9 +171,82 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 return {
                     'statusCode': 400,
                     'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                    'body': json.dumps({'error': 'Invalid action'})
+                    'body': json.dumps({'error': 'Invalid action'}),
+                    'isBase64Encoded': False
                 }
         
+        finally:
+            cur.close()
+            conn.close()
+    
+    elif method == 'PUT':
+        import psycopg2
+        
+        body_data = json.loads(event.get('body', '{}'))
+        user_id = body_data.get('user_id')
+        nickname = body_data.get('nickname')
+        avatar_url = body_data.get('avatar_url')
+        hide_online = body_data.get('hide_online_status', False)
+        theme = body_data.get('theme', 'system')
+        
+        if not user_id:
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'user_id required'}),
+                'isBase64Encoded': False
+            }
+        
+        dsn = os.environ.get('DATABASE_URL')
+        conn = psycopg2.connect(dsn)
+        cur = conn.cursor()
+        
+        try:
+            cur.execute("""
+                UPDATE users
+                SET nickname = %s, avatar_url = %s, hide_online_status = %s, theme = %s
+                WHERE id = %s
+            """, (nickname, avatar_url, hide_online, theme, user_id))
+            conn.commit()
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'success': True}),
+                'isBase64Encoded': False
+            }
+        finally:
+            cur.close()
+            conn.close()
+    
+    elif method == 'DELETE':
+        import psycopg2
+        
+        body_data = json.loads(event.get('body', '{}'))
+        user_id = body_data.get('user_id')
+        
+        if not user_id:
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'user_id required'}),
+                'isBase64Encoded': False
+            }
+        
+        dsn = os.environ.get('DATABASE_URL')
+        conn = psycopg2.connect(dsn)
+        cur = conn.cursor()
+        
+        try:
+            cur.execute("UPDATE users SET username = %s WHERE id = %s", (f'deleted_{user_id}', user_id))
+            conn.commit()
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'success': True}),
+                'isBase64Encoded': False
+            }
         finally:
             cur.close()
             conn.close()
@@ -129,5 +254,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     return {
         'statusCode': 405,
         'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-        'body': json.dumps({'error': 'Method not allowed'})
+        'body': json.dumps({'error': 'Method not allowed'}),
+        'isBase64Encoded': False
     }

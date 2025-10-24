@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import GroupManagementDialog from './GroupManagementDialog';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
 
@@ -46,7 +47,10 @@ export default function ChatWindow({ chat, currentUser, onBack, onChatUpdate }: 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [showGroupManagement, setShowGroupManagement] = useState(false);
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const loadMessages = async () => {
@@ -77,13 +81,30 @@ export default function ChatWindow({ chat, currentUser, onBack, onChatUpdate }: 
     }
   }, [messages]);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFileToUpload(file);
+    }
+  };
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim() || !chat || sending) return;
+    if ((!inputMessage.trim() && !fileToUpload) || !chat || sending) return;
 
     setSending(true);
     const messageText = inputMessage;
     setInputMessage('');
+
+    let fileUrl = null;
+    if (fileToUpload) {
+      const reader = new FileReader();
+      fileUrl = await new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(fileToUpload);
+      });
+      setFileToUpload(null);
+    }
 
     try {
       const response = await fetch(MESSAGES_API, {
@@ -92,7 +113,8 @@ export default function ChatWindow({ chat, currentUser, onBack, onChatUpdate }: 
         body: JSON.stringify({
           chat_id: chat.id,
           sender_id: currentUser.user_id,
-          content: messageText,
+          content: messageText || '📎 Файл',
+          file_url: fileUrl,
         }),
       });
 
@@ -166,6 +188,17 @@ export default function ChatWindow({ chat, currentUser, onBack, onChatUpdate }: 
             <p className="text-xs text-muted-foreground">Группа</p>
           )}
         </div>
+
+        {chat.is_group && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowGroupManagement(true)}
+            className="hover:bg-primary/20"
+          >
+            <Icon name="Users" size={20} />
+          </Button>
+        )}
       </div>
 
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
@@ -196,6 +229,15 @@ export default function ChatWindow({ chat, currentUser, onBack, onChatUpdate }: 
                       </p>
                     )}
                     
+                    {message.file_url && (
+                      <img
+                        src={message.file_url}
+                        alt="attachment"
+                        className="rounded-lg max-w-full mb-2 cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => window.open(message.file_url!, '_blank')}
+                      />
+                    )}
+                    
                     <p className="text-sm break-words">{message.content}</p>
                     
                     <div className="flex items-center justify-end gap-1 mt-1">
@@ -213,7 +255,39 @@ export default function ChatWindow({ chat, currentUser, onBack, onChatUpdate }: 
       </ScrollArea>
 
       <form onSubmit={handleSend} className="p-4 border-t border-primary/30 glass-strong">
+        {fileToUpload && (
+          <div className="mb-2 p-2 rounded-lg glass flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Icon name="Paperclip" size={16} />
+              <span className="text-sm">{fileToUpload.name}</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFileToUpload(null)}
+            >
+              <Icon name="X" size={16} />
+            </Button>
+          </div>
+        )}
         <div className="flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            className="glass border-primary/30 hover:bg-primary/20"
+            disabled={sending}
+          >
+            <Icon name="Paperclip" size={20} />
+          </Button>
           <Input
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
@@ -225,7 +299,7 @@ export default function ChatWindow({ chat, currentUser, onBack, onChatUpdate }: 
             type="submit"
             size="icon"
             className="bg-primary hover:bg-primary/90"
-            disabled={sending || !inputMessage.trim()}
+            disabled={sending || (!inputMessage.trim() && !fileToUpload)}
           >
             {sending ? (
               <Icon name="Loader2" className="animate-spin" size={20} />
@@ -235,6 +309,17 @@ export default function ChatWindow({ chat, currentUser, onBack, onChatUpdate }: 
           </Button>
         </div>
       </form>
+
+      <GroupManagementDialog
+        open={showGroupManagement}
+        onClose={() => setShowGroupManagement(false)}
+        chat={chat}
+        currentUser={currentUser.user_id}
+        onUpdate={() => {
+          loadMessages();
+          onChatUpdate();
+        }}
+      />
     </div>
   );
 }

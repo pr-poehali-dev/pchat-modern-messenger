@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import ChatList from './ChatList';
 import ChatWindow from './ChatWindow';
+import CreateGroupDialog from './CreateGroupDialog';
+import SettingsDialog from './SettingsDialog';
 import { useToast } from '@/hooks/use-toast';
 
 const CHATS_API = 'https://functions.poehali.dev/2f19c6bc-5b44-4f12-a380-4f5c4255084e';
@@ -28,6 +30,8 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [showMobileChat, setShowMobileChat] = useState(false);
+  const [showGroupDialog, setShowGroupDialog] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const { toast } = useToast();
 
   const loadChats = async () => {
@@ -97,10 +101,38 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
   };
 
   const handleNewGroup = () => {
-    toast({
-      title: 'В разработке',
-      description: 'Создание групп будет добавлено в следующей версии',
-    });
+    setShowGroupDialog(true);
+  };
+
+  const handleSettings = () => {
+    setShowSettings(true);
+  };
+
+  const handleDeleteChat = async (chatId: number) => {
+    try {
+      const response = await fetch(`${CHATS_API}/${chatId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: user.user_id }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Чат удален',
+          description: 'Чат удален из списка',
+        });
+        if (selectedChat?.id === chatId) {
+          setSelectedChat(null);
+        }
+        loadChats();
+      }
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось удалить чат',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -111,10 +143,26 @@ export default function ChatInterface({ user, onLogout }: ChatInterfaceProps) {
           onChatSelect={handleChatSelect}
           onNewChat={handleNewChat}
           onNewGroup={handleNewGroup}
-          onLogout={onLogout}
+          onSettings={handleSettings}
+          onDeleteChat={handleDeleteChat}
           currentUser={user}
         />
       </div>
+      
+      <CreateGroupDialog
+        open={showGroupDialog}
+        onClose={() => setShowGroupDialog(false)}
+        onSuccess={loadChats}
+        existingChats={chats}
+        currentUserId={user.user_id}
+      />
+      
+      <SettingsDialog
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        currentUser={user}
+        onLogout={onLogout}
+      />
       
       <div className={`${showMobileChat ? 'flex' : 'hidden md:flex'} flex-1`}>
         <ChatWindow

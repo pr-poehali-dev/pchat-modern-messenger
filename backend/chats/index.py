@@ -155,13 +155,71 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return {
                 'statusCode': 200,
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({'chat_id': chat_id})
+                'body': json.dumps({'chat_id': chat_id}),
+                'isBase64Encoded': False
+            }
+        
+        elif method == 'PUT':
+            body_data = json.loads(event.get('body', '{}'))
+            chat_id = body_data.get('chat_id')
+            user_id = body_data.get('user_id')
+            name = body_data.get('name')
+            avatar_url = body_data.get('avatar_url')
+            
+            if not chat_id or not user_id:
+                return {
+                    'statusCode': 400,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'chat_id and user_id required'}),
+                    'isBase64Encoded': False
+                }
+            
+            cur.execute("""
+                UPDATE chats
+                SET name = %s, avatar_url = %s
+                WHERE id = %s AND created_by = %s
+            """, (name, avatar_url, chat_id, user_id))
+            conn.commit()
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'success': True}),
+                'isBase64Encoded': False
+            }
+        
+        elif method == 'DELETE':
+            body_data = json.loads(event.get('body', '{}'))
+            params = event.get('pathParams', {})
+            chat_id = params.get('id') or body_data.get('chat_id')
+            user_id = body_data.get('user_id')
+            
+            if not chat_id or not user_id:
+                return {
+                    'statusCode': 400,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'chat_id and user_id required'}),
+                    'isBase64Encoded': False
+                }
+            
+            cur.execute("""
+                DELETE FROM chat_members
+                WHERE chat_id = %s AND user_id = %s
+            """, (chat_id, user_id))
+            conn.commit()
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'success': True}),
+                'isBase64Encoded': False
             }
         
         return {
             'statusCode': 405,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({'error': 'Method not allowed'})
+            'body': json.dumps({'error': 'Method not allowed'}),
+            'isBase64Encoded': False
         }
     
     finally:

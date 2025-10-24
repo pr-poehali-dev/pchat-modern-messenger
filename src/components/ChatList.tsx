@@ -22,7 +22,8 @@ interface ChatListProps {
   onChatSelect: (chat: Chat) => void;
   onNewChat: () => void;
   onNewGroup: () => void;
-  onLogout: () => void;
+  onSettings: () => void;
+  onDeleteChat: (chatId: number) => void;
   currentUser: User;
 }
 
@@ -31,7 +32,8 @@ export default function ChatList({
   onChatSelect,
   onNewChat,
   onNewGroup,
-  onLogout,
+  onSettings,
+  onDeleteChat,
 }: ChatListProps) {
   const formatTime = (isoTime: string | null) => {
     if (!isoTime) return '';
@@ -55,10 +57,10 @@ export default function ChatList({
           <Button
             variant="ghost"
             size="icon"
-            onClick={onLogout}
+            onClick={onSettings}
             className="hover:bg-primary/20"
           >
-            <Icon name="LogOut" size={20} />
+            <Icon name="Settings" size={20} />
           </Button>
         </div>
         
@@ -95,38 +97,50 @@ export default function ChatList({
             </div>
           ) : (
             chats.map((chat) => (
-              <button
-                key={chat.id}
-                onClick={() => onChatSelect(chat)}
-                className="w-full p-3 rounded-xl glass hover:bg-primary/10 transition-all mb-2 text-left group"
-              >
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12 border-2 border-primary/30">
-                    <AvatarImage src={chat.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary/20 text-primary font-semibold">
-                      {chat.name?.charAt(0).toUpperCase() || '?'}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-semibold text-sm truncate">
-                        {chat.name || 'Неизвестный'}
-                      </h3>
-                      {chat.last_message_time && (
-                        <span className="text-xs text-muted-foreground">
-                          {formatTime(chat.last_message_time)}
-                        </span>
+              <div key={chat.id} className="relative group/chat mb-2">
+                <button
+                  onClick={() => onChatSelect(chat)}
+                  className="w-full p-3 rounded-xl glass hover:bg-primary/10 transition-all text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-12 w-12 border-2 border-primary/30">
+                      <AvatarImage src={chat.avatar_url || undefined} />
+                      <AvatarFallback className="bg-primary/20 text-primary font-semibold">
+                        {chat.name?.charAt(0).toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold text-sm truncate">
+                          {chat.name || 'Неизвестный'}
+                        </h3>
+                        {chat.last_message_time && (
+                          <span className="text-xs text-muted-foreground">
+                            {formatTime(chat.last_message_time)}
+                          </span>
+                        )}
+                      </div>
+                      {chat.last_message && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          {chat.last_message}
+                        </p>
                       )}
                     </div>
-                    {chat.last_message && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        {chat.last_message}
-                      </p>
-                    )}
                   </div>
-                </div>
-              </button>
+                </button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteChat(chat.id);
+                  }}
+                  className="absolute left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/chat:opacity-100 transition-opacity hover:bg-destructive/20 h-8 w-8"
+                >
+                  <Icon name="Trash2" size={14} className="text-destructive" />
+                </Button>
+              </div>
             ))
           )}
         </div>
